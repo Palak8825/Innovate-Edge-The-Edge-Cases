@@ -1,22 +1,29 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Bakaya MSME AR Desk API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: buyers
+    description: Buyer management
+  - name: invoices
+    description: Invoice management
+  - name: escalations
+    description: Escalation events
+  - name: dashboard
+    description: Dashboard summaries
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +31,302 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /buyers:
+    get:
+      operationId: listBuyers
+      tags: [buyers]
+      summary: List all buyers
+      responses:
+        "200":
+          description: List of buyers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Buyer"
+    post:
+      operationId: createBuyer
+      tags: [buyers]
+      summary: Create a buyer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyerInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Buyer"
+
+  /buyers/{id}:
+    get:
+      operationId: getBuyer
+      tags: [buyers]
+      summary: Get a buyer by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Buyer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Buyer"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateBuyer
+      tags: [buyers]
+      summary: Update a buyer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyerUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Buyer"
+    delete:
+      operationId: deleteBuyer
+      tags: [buyers]
+      summary: Delete a buyer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /invoices:
+    get:
+      operationId: listInvoices
+      tags: [invoices]
+      summary: List all invoices
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: buyerId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invoice"
+    post:
+      operationId: createInvoice
+      tags: [invoices]
+      summary: Create an invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+
+  /invoices/{id}:
+    get:
+      operationId: getInvoice
+      tags: [invoices]
+      summary: Get an invoice by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Invoice with escalation history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateInvoice
+      tags: [invoices]
+      summary: Update an invoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+    delete:
+      operationId: deleteInvoice
+      tags: [invoices]
+      summary: Delete an invoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /invoices/{id}/escalate:
+    post:
+      operationId: escalateInvoice
+      tags: [invoices]
+      summary: Trigger next escalation step for an invoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EscalationInput"
+      responses:
+        "201":
+          description: Escalation event created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EscalationEvent"
+
+  /invoices/{id}/mark-paid:
+    post:
+      operationId: markInvoicePaid
+      tags: [invoices]
+      summary: Mark invoice as paid
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+
+  /invoices/{id}/interest:
+    get:
+      operationId: getInvoiceInterest
+      tags: [invoices]
+      summary: Get live interest calculation for an invoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Interest calculation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InterestCalc"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary metrics
+      responses:
+        "200":
+          description: Summary metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/overdue-breakdown:
+    get:
+      operationId: getOverdueBreakdown
+      tags: [dashboard]
+      summary: Breakdown of overdue invoices by stage
+      responses:
+        "200":
+          description: Overdue breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OverdueStage"
+
+  /dashboard/recent-activity:
+    get:
+      operationId: getRecentActivity
+      tags: [dashboard]
+      summary: Recent escalation activity feed
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +334,310 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    Buyer:
+      type: object
+      required: [id, name, contactName, phone, language, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        contactName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: ["string", "null"]
+        language:
+          type: string
+          description: "Preferred language code e.g. 'ta', 'hi', 'en'"
+        gstNumber:
+          type: ["string", "null"]
+        city:
+          type: ["string", "null"]
+        totalOutstanding:
+          type: number
+        invoiceCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    BuyerInput:
+      type: object
+      required: [name, contactName, phone, language]
+      properties:
+        name:
+          type: string
+        contactName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: ["string", "null"]
+        language:
+          type: string
+        gstNumber:
+          type: ["string", "null"]
+        city:
+          type: ["string", "null"]
+
+    BuyerUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        contactName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: ["string", "null"]
+        language:
+          type: string
+        gstNumber:
+          type: ["string", "null"]
+        city:
+          type: ["string", "null"]
+
+    Invoice:
+      type: object
+      required: [id, invoiceNumber, buyerId, buyerName, amount, invoiceDate, dueDate, status, escalationStage, daysOverdue, createdAt]
+      properties:
+        id:
+          type: integer
+        invoiceNumber:
+          type: string
+        buyerId:
+          type: integer
+        buyerName:
+          type: string
+        amount:
+          type: number
+        invoiceDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [pending, overdue, escalating, paid, disputed]
+        escalationStage:
+          type: string
+          enum: [none, nudge, tax_nudge, formal_demand, odr_ready]
+        daysOverdue:
+          type: integer
+        interestAccrued:
+          type: number
+        description:
+          type: ["string", "null"]
+        poNumber:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    InvoiceDetail:
+      type: object
+      required: [id, invoiceNumber, buyerId, buyerName, amount, invoiceDate, dueDate, status, escalationStage, daysOverdue, createdAt, escalationEvents]
+      properties:
+        id:
+          type: integer
+        invoiceNumber:
+          type: string
+        buyerId:
+          type: integer
+        buyerName:
+          type: string
+        amount:
+          type: number
+        invoiceDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [pending, overdue, escalating, paid, disputed]
+        escalationStage:
+          type: string
+          enum: [none, nudge, tax_nudge, formal_demand, odr_ready]
+        daysOverdue:
+          type: integer
+        interestAccrued:
+          type: number
+        description:
+          type: ["string", "null"]
+        poNumber:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        escalationEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/EscalationEvent"
+
+    InvoiceInput:
+      type: object
+      required: [invoiceNumber, buyerId, amount, invoiceDate, dueDate]
+      properties:
+        invoiceNumber:
+          type: string
+        buyerId:
+          type: integer
+        amount:
+          type: number
+        invoiceDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        description:
+          type: ["string", "null"]
+        poNumber:
+          type: ["string", "null"]
+
+    InvoiceUpdate:
+      type: object
+      properties:
+        amount:
+          type: number
+        dueDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [pending, overdue, escalating, paid, disputed]
+        description:
+          type: ["string", "null"]
+        poNumber:
+          type: ["string", "null"]
+
+    EscalationEvent:
+      type: object
+      required: [id, invoiceId, stage, message, sentAt, channel, approvedByOwner]
+      properties:
+        id:
+          type: integer
+        invoiceId:
+          type: integer
+        stage:
+          type: string
+          enum: [nudge, tax_nudge, formal_demand, odr_ready]
+        message:
+          type: string
+        sentAt:
+          type: string
+          format: date-time
+        channel:
+          type: string
+          enum: [whatsapp, email, system]
+        approvedByOwner:
+          type: boolean
+        language:
+          type: ["string", "null"]
+
+    EscalationInput:
+      type: object
+      required: [stage, channel, approvedByOwner]
+      properties:
+        stage:
+          type: string
+          enum: [nudge, tax_nudge, formal_demand, odr_ready]
+        channel:
+          type: string
+          enum: [whatsapp, email, system]
+        approvedByOwner:
+          type: boolean
+        customMessage:
+          type: ["string", "null"]
+
+    InterestCalc:
+      type: object
+      required: [invoiceId, principalAmount, daysOverdue, rbiRate, applicableRate, dailyInterest, totalInterest, totalDue, isLegallyOverdue]
+      properties:
+        invoiceId:
+          type: integer
+        principalAmount:
+          type: number
+        daysOverdue:
+          type: integer
+        rbiRate:
+          type: number
+        applicableRate:
+          type: number
+          description: "3x RBI rate as per MSMED Act"
+        dailyInterest:
+          type: number
+        totalInterest:
+          type: number
+        totalDue:
+          type: number
+        isLegallyOverdue:
+          type: boolean
+        section43bhApplies:
+          type: boolean
+
+    DashboardSummary:
+      type: object
+      required: [totalInvoices, totalOutstanding, overdueCount, overdueAmount, escalatingCount, paidCount, recoveredAmount, avgDaysOverdue]
+      properties:
+        totalInvoices:
+          type: integer
+        totalOutstanding:
+          type: number
+        overdueCount:
+          type: integer
+        overdueAmount:
+          type: number
+        escalatingCount:
+          type: integer
+        paidCount:
+          type: integer
+        recoveredAmount:
+          type: number
+        avgDaysOverdue:
+          type: number
+        odrReadyCount:
+          type: integer
+
+    OverdueStage:
+      type: object
+      required: [stage, count, amount]
+      properties:
+        stage:
+          type: string
+        count:
+          type: integer
+        amount:
+          type: number
+        label:
+          type: string
+
+    ActivityItem:
+      type: object
+      required: [id, invoiceId, invoiceNumber, buyerName, stage, message, sentAt, channel]
+      properties:
+        id:
+          type: integer
+        invoiceId:
+          type: integer
+        invoiceNumber:
+          type: string
+        buyerName:
+          type: string
+        stage:
+          type: string
+        message:
+          type: string
+        sentAt:
+          type: string
+          format: date-time
+        channel:
+          type: string
