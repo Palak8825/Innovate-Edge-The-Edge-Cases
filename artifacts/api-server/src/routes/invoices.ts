@@ -19,7 +19,8 @@ const router: IRouter = Router();
 
 function enrichInvoice(inv: typeof invoicesTable.$inferSelect, buyerName: string) {
   const daysOverdue = getDaysOverdue(inv.dueDate);
-  const interest = calculateInterest(parseFloat(inv.amount as string), daysOverdue);
+  // Interest uses invoiceDate + MSMED 45-day rule (not dueDate), per MSMED Act s.16
+  const interest = calculateInterest(parseFloat(inv.amount as string), inv.invoiceDate);
   return {
     ...inv,
     amount: parseFloat(inv.amount as string),
@@ -184,7 +185,6 @@ router.post("/invoices/:id/escalate", async (req, res): Promise<void> => {
     return;
   }
 
-  const daysOverdue = getDaysOverdue(row.invoice.dueDate);
   const message =
     parsed.data.customMessage ||
     generateEscalationMessage(
@@ -192,7 +192,7 @@ router.post("/invoices/:id/escalate", async (req, res): Promise<void> => {
       row.invoice.invoiceNumber,
       parseFloat(row.invoice.amount as string),
       row.buyer.name,
-      daysOverdue,
+      row.invoice.invoiceDate,
       row.buyer.language
     );
 
@@ -262,8 +262,8 @@ router.get("/invoices/:id/interest", async (req, res): Promise<void> => {
     return;
   }
 
-  const daysOverdue = getDaysOverdue(invoice.dueDate);
-  const calc = calculateInterest(parseFloat(invoice.amount as string), daysOverdue);
+  // Calculate interest using invoiceDate + MSMED 45-day rule (MSMED Act s.16)
+  const calc = calculateInterest(parseFloat(invoice.amount as string), invoice.invoiceDate);
 
   res.json({ invoiceId: params.data.id, ...calc });
 });

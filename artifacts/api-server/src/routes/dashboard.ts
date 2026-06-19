@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, desc } from "drizzle-orm";
 import { db, buyersTable, invoicesTable, escalationEventsTable } from "@workspace/db";
-import { getDaysOverdue } from "../lib/interest";
+import { getDaysOverdue, getMSMEDaysOverdue } from "../lib/interest";
 
 const router: IRouter = Router();
 

@@ -48,21 +48,32 @@ function InterestMeter({ invoiceId }: { invoiceId: number }) {
   if (isLoading) return <div className="h-24 animate-pulse bg-muted rounded-lg" />;
   if (!interest) return null;
 
+  const notEligible = !interest.eligible;
+  const withinLimit = interest.eligible && !interest.isLegallyOverdue;
+  const accruing = interest.eligible && interest.isLegallyOverdue;
+
   return (
-    <div className={`rounded-lg p-4 border ${interest.isLegallyOverdue ? "bg-orange-50 border-orange-200" : "bg-green-50 border-green-200"}`}>
+    <div className={`rounded-lg p-4 border ${accruing ? "bg-orange-50 border-orange-200" : withinLimit ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
       <div className="flex items-center gap-2 mb-3">
-        <AlertCircle className={`w-4 h-4 ${interest.isLegallyOverdue ? "text-orange-600" : "text-green-600"}`} />
+        <AlertCircle className={`w-4 h-4 ${accruing ? "text-orange-600" : withinLimit ? "text-green-600" : "text-gray-500"}`} />
         <p className="text-sm font-semibold text-foreground">
-          {interest.isLegallyOverdue ? "Interest Accruing at 3× RBI Rate" : "Within Legal Limit"}
+          {accruing ? "Interest Accruing — 3× RBI Rate" : withinLimit ? "Within 45-Day Limit" : "Udyam Eligibility Not Confirmed"}
         </p>
       </div>
+
+      {notEligible && (
+        <div className="mb-3 text-xs text-gray-600 bg-gray-100 rounded p-2.5">
+          Statutory interest does not apply — supplier Udyam registration postdates the invoice (Silpi Industries, SC 2021).
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <p className="text-xs text-muted-foreground">Principal</p>
           <p className="text-base font-bold text-foreground" data-testid="interest-principal">{formatCurrency(interest.principalAmount)}</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Interest Accrued</p>
+          <p className="text-xs text-muted-foreground">Interest (s.16)</p>
           <p className={`text-base font-bold ${interest.totalInterest > 0 ? "text-orange-600" : "text-foreground"}`} data-testid="interest-accrued">
             {formatCurrency(interest.totalInterest)}
           </p>
@@ -72,17 +83,27 @@ function InterestMeter({ invoiceId }: { invoiceId: number }) {
           <p className="text-lg font-bold text-foreground" data-testid="interest-total-due">{formatCurrency(interest.totalDue)}</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Daily Interest</p>
-          <p className="text-base font-medium text-orange-600">{formatCurrency(interest.dailyInterest)}/day</p>
+          <p className="text-xs text-muted-foreground">Daily Accrual</p>
+          <p className={`text-base font-medium ${accruing ? "text-orange-600" : "text-muted-foreground"}`}>
+            {accruing ? `${formatCurrency(interest.dailyInterest)}/day` : "—"}
+          </p>
         </div>
       </div>
-      {interest.section43bhApplies && (
-        <div className="mt-3 pt-3 border-t border-orange-200 flex items-start gap-2">
-          <AlertCircle className="w-3.5 h-3.5 text-orange-600 mt-0.5 flex-shrink-0" />
-          <p className="text-xs text-orange-700">
-            Section 43B(h) applies — buyer cannot claim this amount as a tax deduction until paid.
-            Applicable rate: {(interest.applicableRate * 100).toFixed(1)}% ({(interest.rbiRate * 100).toFixed(1)}% × 3).
-          </p>
+
+      {accruing && (
+        <div className="mt-3 pt-3 border-t border-orange-200 space-y-1.5">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-3.5 h-3.5 text-orange-600 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-orange-700">
+              <strong>s.43B(h) —</strong> buyer cannot deduct this expense until paid. Rate: {(interest.applicableRate * 100).toFixed(1)}% p.a. ({(interest.rbiRate * 100).toFixed(1)}% RBI × 3), compound with monthly rests.
+            </p>
+          </div>
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-3.5 h-3.5 text-orange-600 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-orange-700">
+              <strong>Udyam eligible</strong> — supplier was registered before this invoice date (Silpi Industries, SC 2021).
+            </p>
+          </div>
         </div>
       )}
     </div>
@@ -399,12 +420,16 @@ export function InvoiceDetail({ id }: { id: number }) {
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">RBI Rate (×3)</span>
-                <span className="font-medium text-foreground">19.5% p.a.</span>
+                <span className="font-medium text-foreground">16.5% p.a.</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Formula</span>
+                <span className="font-medium text-foreground">P(1+r/12)^months</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">43B(h) Applies</span>
-                <span className={`font-medium ${invoice.daysOverdue > 45 ? "text-red-600" : "text-green-600"}`}>
-                  {invoice.daysOverdue > 45 ? "Yes" : "No"}
+                <span className={`font-medium ${invoice.daysOverdue > 0 ? "text-red-600" : "text-green-600"}`}>
+                  {invoice.daysOverdue > 0 ? "Yes" : "No"}
                 </span>
               </div>
             </div>
