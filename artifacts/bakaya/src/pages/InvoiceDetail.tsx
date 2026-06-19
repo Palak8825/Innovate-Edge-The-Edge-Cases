@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, CheckCircle2, Zap, FileText, AlertCircle, Clock, MessageSquare, Mail, Cpu } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Zap, FileText, AlertCircle, Clock, MessageSquare, Mail, Cpu, Trash2, Download } from "lucide-react";
 import {
   useGetInvoice,
   useGetInvoiceInterest,
   useEscalateInvoice,
   useMarkInvoicePaid,
+  useDeleteInvoice,
   getGetInvoiceQueryKey,
   getGetDashboardSummaryQueryKey,
   getGetOverdueBreakdownQueryKey,
@@ -123,6 +124,7 @@ export function InvoiceDetail({ id }: { id: number }) {
 
   const escalate = useEscalateInvoice();
   const markPaid = useMarkInvoicePaid();
+  const deleteInvoice = useDeleteInvoice();
 
   const sendEmail = useMutation({
     mutationFn: async (vars: { invoiceId: number; stage: string }) => {
@@ -200,6 +202,20 @@ export function InvoiceDetail({ id }: { id: number }) {
     );
   }
 
+  function handleDelete() {
+    if (!confirm(`Delete ${invoice?.invoiceNumber}? This cannot be undone.`)) return;
+    deleteInvoice.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          toast({ title: "Invoice deleted" });
+          setLocation("/invoices");
+        },
+        onError: () => toast({ title: "Error", description: "Failed to delete invoice", variant: "destructive" }),
+      }
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -241,6 +257,17 @@ export function InvoiceDetail({ id }: { id: number }) {
           <p className="text-sm text-muted-foreground mt-0.5">{invoice.buyerName}</p>
         </div>
         <div className="flex gap-2">
+          {invoice.escalationStage === "odr_ready" && (
+            <a href={`/api/invoices/${id}/odr-pack`} target="_blank" rel="noopener noreferrer">
+              <button
+                data-testid="btn-download-odr"
+                className="flex items-center gap-1.5 border border-purple-300 bg-purple-50 text-purple-800 text-sm font-medium px-3 py-1.5 rounded-md hover:bg-purple-100 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Download ODR Pack
+              </button>
+            </a>
+          )}
           {invoice.status !== "paid" && (
             <button
               data-testid="btn-mark-paid"
@@ -262,6 +289,15 @@ export function InvoiceDetail({ id }: { id: number }) {
               Escalate to {getStageLabel(nextStage)}
             </button>
           )}
+          <button
+            data-testid="btn-delete-invoice"
+            onClick={handleDelete}
+            disabled={deleteInvoice.isPending}
+            className="flex items-center gap-1.5 border border-red-200 bg-red-50 text-red-700 text-sm font-medium px-3 py-1.5 rounded-md hover:bg-red-100 transition-colors disabled:opacity-50"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </button>
         </div>
       </div>
 
