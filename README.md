@@ -54,6 +54,10 @@ Drafting layer (/api/draft → Groq llama-3.3-70b)  ── LLM ──
    writes the human message AROUND the numbers; never computes them
         │  (on any failure → deterministic template fallback)
         ▼
+Dispatch (/api/invoices/:id/send → lib/notify → Gmail SMTP)  ── email ──
+   renders stage-coloured HTML, sends (EMAIL_MODE=real) or logs (simulation)
+        │
+        ▼
 Postgres (Drizzle ORM): buyers, invoices, escalation_events
 ```
 
@@ -136,8 +140,12 @@ produced by deterministic, auditable code. That separation is the product.
 | Var | Used by | Notes |
 |---|---|---|
 | `DATABASE_URL` | `lib/db` | Postgres connection string |
-| `GROQ_API_KEY` | `/api/draft` | free-tier Groq key; without it, drafting falls back to templates |
+| `GROQ_API_KEY` | `/api/draft`, `/api/invoices/:id/send` | free-tier Groq key; without it, drafting falls back to templates |
 | `PORT` | api-server | API port (8080 in this setup) |
+| `EMAIL_MODE` | `lib/notify` | `real` to actually send via Gmail SMTP; `simulation` (default) logs only |
+| `GMAIL_ADDRESS` | `lib/notify` | sending Gmail account (when `EMAIL_MODE=real`) |
+| `GMAIL_APP_PASSWORD` | `lib/notify` | 16-char Google App Password (not your normal password) |
+| `DEMO_RECIPIENT_EMAIL` | `/api/invoices/:id/send` | optional: redirects all notices to one inbox so the demo never emails a real buyer |
 
 On Replit these are set in **Secrets**; locally, export them in your shell.
 
@@ -159,6 +167,7 @@ pnpm --filter @workspace/api-spec run codegen   # regenerate hooks/validators af
 ```bash
 curl localhost:80/api/invoices
 curl -X POST localhost:80/api/invoices/3/draft   # → {"stage":..., "source":"llm", "message":...}
+curl -X POST localhost:80/api/invoices/3/send    # drafts + emails; → {"deliveryStatus":"sent"|"simulated", ...}
 ```
 
 > **Note:** a freshly cloned + migrated database is **empty**. Add a buyer and an
@@ -186,20 +195,30 @@ chatbot.
 ## 8. Status — what's working, mocked, and next
 **Working (end-to-end, on real persistence):**
 - Add buyer / add invoice / list / detail — all persisted in Postgres
+- Editable buyer email, saved to the DB (used as the notice recipient)
 - Rules engine: eligibility, compound interest, 5-stage ladder, 43B(h) flag (deterministic & auditable)
 - Dashboard computed from live DB queries
 - LLM drafting via Groq with deterministic fallback (`source` field exposes which ran)
+- **Real email dispatch** — `POST /api/invoices/:id/send` drafts the notice via
+  Groq, renders a stage-coloured HTML email (invoice breakdown + legal footer),
+  and sends it via Gmail SMTP through a `notify` layer. An `EMAIL_MODE` env var
+  switches between `real` (actually sends) and `simulation` (logs only, default).
+  Wired to the UI: "Confirm & Send" on the invoice page with the Email channel
+  hits this route. Each send logs an escalation event (`channel="email"`,
+  owner-approved) and returns `deliveryStatus` (`sent`/`simulated`/`failed`).
 - One-click escalate + mark-paid; escalation events logged with channel + language
 - Deployed and publicly reachable
 
-**Mocked / seeded:**
+**Mocked / seeded / demo-scoped:**
 - No seed script — a fresh clone starts empty; demo data is entered through the UI (the live deployment is pre-populated)
 - Supplier Udyam date is a single demo constant (a multi-tenant build would read it per-supplier)
+- **Demo email routing:** `DEMO_RECIPIENT_EMAIL`, when set, redirects all notices
+  to one inbox so the demo never emails a real buyer. Unset it (and the route
+  uses the buyer's stored email) for production behaviour.
 
 **Not yet built (roadmap):**
-- **Message dispatch** — notices are *drafted and logged* but not actually sent;
-  email/WhatsApp delivery is the next integration.
-- **Autonomous escalation sweep** — escalation is currently one-click per
+- **WhatsApp delivery** — email is live; WhatsApp is a recorded channel only, not yet dispatched.
+- **Autonomous escalation sweep** — escalation/send is currently one-click per
   invoice; a scheduled sweep that advances the whole book (with owner approval
   gating the legal stages) is the planned "agentic" step.
 - **Invoice ingestion** — currently manual entry; Tally/spreadsheet/OCR import is future work.
