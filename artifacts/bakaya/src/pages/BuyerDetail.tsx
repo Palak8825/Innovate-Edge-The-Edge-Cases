@@ -141,7 +141,7 @@ export function BuyerDetail({ id }: { id: number }) {
                     <td className="px-4 py-3 text-right font-semibold text-foreground">{formatCurrency(inv.amount)}</td>
                     <td className="px-4 py-3 text-center hidden sm:table-cell">
                       {inv.daysOverdue > 0 ? (
-                        <span className={`text-sm font-semibold ${inv.daysOverdue > 90 ? "text-red-600" : inv.daysOverdue > 45 ? "text-orange-600" : "text-yellow-600"}`}>
+                        <span className={`text-sm font-semibold ${inv.status === "paid" ? "text-muted-foreground" : inv.daysOverdue > 90 ? "text-red-600" : inv.daysOverdue > 45 ? "text-orange-600" : "text-yellow-600"}`}>
                           {inv.daysOverdue}d
                         </span>
                       ) : (
