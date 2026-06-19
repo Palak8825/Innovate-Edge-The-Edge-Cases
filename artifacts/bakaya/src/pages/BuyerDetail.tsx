@@ -1,14 +1,23 @@
+import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Building2, Phone, Mail, Globe, Hash } from "lucide-react";
+import { ArrowLeft, Building2, Phone, Mail, Globe, Hash, Pencil, Check, X } from "lucide-react";
 import {
   useGetBuyer,
   useListInvoices,
+  useUpdateBuyer,
   getGetBuyerQueryKey,
   getListInvoicesQueryKey,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatCurrency, formatDate, getStatusColor, getStageLabel, getStageColor, getLanguageLabel } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export function BuyerDetail({ id }: { id: number }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [emailValue, setEmailValue] = useState("");
+
   const { data: buyer, isLoading: buyerLoading } = useGetBuyer(id, {
     query: { queryKey: getGetBuyerQueryKey(id) },
   });
@@ -16,6 +25,32 @@ export function BuyerDetail({ id }: { id: number }) {
     { buyerId: id },
     { query: { queryKey: getListInvoicesQueryKey({ buyerId: id }) } }
   );
+  const updateBuyer = useUpdateBuyer();
+
+  function startEditEmail() {
+    setEmailValue(buyer?.email ?? "");
+    setEditingEmail(true);
+  }
+
+  function cancelEditEmail() {
+    setEditingEmail(false);
+    setEmailValue("");
+  }
+
+  function saveEmail() {
+    const trimmed = emailValue.trim();
+    updateBuyer.mutate(
+      { id, data: { email: trimmed || null } },
+      {
+        onSuccess: () => {
+          toast({ title: "Email saved", description: trimmed ? `Set to ${trimmed}` : "Email removed" });
+          queryClient.invalidateQueries({ queryKey: getGetBuyerQueryKey(id) });
+          setEditingEmail(false);
+        },
+        onError: () => toast({ title: "Error", description: "Failed to save email", variant: "destructive" }),
+      }
+    );
+  }
 
   if (buyerLoading) {
     return (
@@ -65,12 +100,52 @@ export function BuyerDetail({ id }: { id: number }) {
               <Phone className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
               <span className="text-foreground">{buyer.phone}</span>
             </div>
-            {buyer.email && (
-              <div className="flex items-center gap-2 text-sm">
-                <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                <span className="text-foreground">{buyer.email}</span>
-              </div>
-            )}
+
+            {/* Email — inline editable */}
+            <div className="flex items-start gap-2">
+              <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+              {editingEmail ? (
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <input
+                    type="email"
+                    value={emailValue}
+                    onChange={(e) => setEmailValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") saveEmail(); if (e.key === "Escape") cancelEditEmail(); }}
+                    placeholder="buyer@example.com"
+                    autoFocus
+                    className="flex-1 min-w-0 text-sm border border-input rounded px-2 py-0.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <button
+                    onClick={saveEmail}
+                    disabled={updateBuyer.isPending}
+                    className="p-1 rounded text-green-600 hover:bg-green-50 disabled:opacity-50"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={cancelEditEmail} className="p-1 rounded text-muted-foreground hover:bg-muted">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : buyer.email ? (
+                <div className="flex items-center gap-1.5 group flex-1 min-w-0">
+                  <span className="text-foreground text-sm truncate">{buyer.email}</span>
+                  <button
+                    onClick={startEditEmail}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
+                  >
+                    <Pencil className="w-3 h-3 text-muted-foreground" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={startEditEmail}
+                  className="text-sm text-primary/70 hover:text-primary hover:underline"
+                >
+                  Add email address
+                </button>
+              )}
+            </div>
+
             {buyer.city && (
               <div className="flex items-center gap-2 text-sm">
                 <Globe className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />

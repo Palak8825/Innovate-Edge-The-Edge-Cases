@@ -12,7 +12,7 @@ import {
   getGetRecentActivityQueryKey,
   getListInvoicesQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   formatCurrency,
   formatDate,
@@ -124,6 +124,21 @@ export function InvoiceDetail({ id }: { id: number }) {
   const escalate = useEscalateInvoice();
   const markPaid = useMarkInvoicePaid();
 
+  const sendEmail = useMutation({
+    mutationFn: async (vars: { invoiceId: number; stage: string }) => {
+      const res = await fetch(`/api/invoices/${vars.invoiceId}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: vars.stage }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error ?? "Failed to send email");
+      }
+      return res.json() as Promise<{ stage: string; source: string; deliveryStatus: string; recipientEmail: string }>;
+    },
+  });
+
   const nextStage = invoice ? getNextStage(invoice.escalationStage) : null;
 
   function invalidateAll() {
@@ -136,6 +151,29 @@ export function InvoiceDetail({ id }: { id: number }) {
 
   function handleEscalate() {
     if (!nextStage) return;
+
+    if (selectedChannel === "email") {
+      sendEmail.mutate(
+        { invoiceId: id, stage: nextStage },
+        {
+          onSuccess: (data) => {
+            const sent = data.deliveryStatus === "sent";
+            toast({
+              title: sent ? "Email dispatched" : "Notice logged (simulated)",
+              description: sent
+                ? `Notice sent to ${data.recipientEmail}`
+                : "Set EMAIL_MODE=real in Replit secrets to send real emails",
+            });
+            setEscalateOpen(false);
+            invalidateAll();
+          },
+          onError: (err) =>
+            toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to send email", variant: "destructive" }),
+        }
+      );
+      return;
+    }
+
     escalate.mutate(
       { id, data: { stage: nextStage as "nudge" | "tax_nudge" | "formal_demand" | "odr_ready", channel: selectedChannel, approvedByOwner: true } },
       {
@@ -251,10 +289,12 @@ export function InvoiceDetail({ id }: { id: number }) {
             <button
               data-testid="btn-confirm-escalate"
               onClick={handleEscalate}
-              disabled={escalate.isPending}
+              disabled={escalate.isPending || sendEmail.isPending}
               className="bg-primary text-primary-foreground text-sm font-medium px-4 py-2 rounded-md hover:opacity-90 disabled:opacity-50"
             >
-              {escalate.isPending ? "Sending..." : "Confirm & Send"}
+              {(escalate.isPending || sendEmail.isPending)
+                ? selectedChannel === "email" ? "Sending email..." : "Sending..."
+                : "Confirm & Send"}
             </button>
             <button
               onClick={() => setEscalateOpen(false)}
