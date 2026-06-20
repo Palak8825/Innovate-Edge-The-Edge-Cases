@@ -235,6 +235,9 @@ export function InvoiceDetail({ id }: { id: number }) {
   }
 
   const currentStepIdx = ESCALATION_STEPS.findIndex((s) => s.stage === invoice.escalationStage);
+  const daysSinceInvoice = invoice.invoiceDate
+    ? Math.floor((Date.now() - new Date(invoice.invoiceDate).getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -366,6 +369,16 @@ export function InvoiceDetail({ id }: { id: number }) {
                 <p className="text-sm font-medium text-foreground mt-0.5">{formatDate(invoice.dueDate)}</p>
               </div>
               <div>
+                <p className="text-xs text-muted-foreground">Days Since Invoice</p>
+                <p className="text-sm font-medium text-foreground mt-0.5">{daysSinceInvoice} days</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Days Past 45-Day Limit</p>
+                <p className={`text-sm font-medium mt-0.5 ${invoice.daysOverdue > 0 ? "text-orange-600" : "text-green-600"}`}>
+                  {invoice.daysOverdue > 0 ? `${invoice.daysOverdue} days overdue` : "Within limit"}
+                </p>
+              </div>
+              <div>
                 <p className="text-xs text-muted-foreground">Buyer</p>
                 <Link href={`/buyers/${invoice.buyerId}`}>
                   <p className="text-sm font-medium text-primary hover:underline cursor-pointer mt-0.5">{invoice.buyerName}</p>
@@ -487,11 +500,15 @@ export function InvoiceDetail({ id }: { id: number }) {
             <p className="text-xs font-semibold text-foreground mb-3">Quick Stats</p>
             <div className="space-y-2.5">
               <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Days Since Invoice</span>
+                <span className="font-medium text-foreground">{daysSinceInvoice} days</span>
+              </div>
+              <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">MSMED Limit</span>
                 <span className="font-medium text-foreground">45 days</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Days Overdue</span>
+                <span className="text-muted-foreground">Days Past Limit</span>
                 <span className={`font-medium ${invoice.daysOverdue > 45 ? "text-red-600" : "text-foreground"}`}>{invoice.daysOverdue} days</span>
               </div>
               <div className="flex justify-between text-xs">
