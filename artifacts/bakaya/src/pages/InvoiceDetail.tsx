@@ -208,6 +208,7 @@ export function InvoiceDetail({ id }: { id: number }) {
       { id },
       {
         onSuccess: () => {
+          invalidateAll();
           toast({ title: "Invoice deleted" });
           setLocation("/invoices");
         },
