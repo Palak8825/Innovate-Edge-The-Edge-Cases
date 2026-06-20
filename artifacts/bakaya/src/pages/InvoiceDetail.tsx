@@ -137,7 +137,7 @@ export function InvoiceDetail({ id }: { id: number }) {
         const err = await res.json().catch(() => ({ error: res.statusText }));
         throw new Error(err.error ?? "Failed to send email");
       }
-      return res.json() as Promise<{ stage: string; source: string; deliveryStatus: string; recipientEmail: string }>;
+      return res.json() as Promise<{ stage: string; source: string; deliveryStatus: string; recipient: string }>;
     },
   });
 
@@ -163,7 +163,7 @@ export function InvoiceDetail({ id }: { id: number }) {
             toast({
               title: sent ? "Email dispatched" : "Notice logged (simulated)",
               description: sent
-                ? `Notice sent to ${data.recipientEmail}`
+                ? `Notice sent to ${data.recipient}`
                 : "Set EMAIL_MODE=real in Replit secrets to send real emails",
             });
             setEscalateOpen(false);
