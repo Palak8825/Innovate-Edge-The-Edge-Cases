@@ -119,7 +119,7 @@ export function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3 bg-card border border-card-border rounded-lg p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-foreground mb-4">Overdue by Escalation Stage</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-4">Invoices by Stage</h2>
           {breakLoading ? (
             <div className="h-48 animate-pulse bg-muted rounded" />
           ) : chartData.every((d) => d.amount === 0) ? (
