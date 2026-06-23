@@ -28,11 +28,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 const ESCALATION_STEPS = [
-  { stage: "none", day: "Day 0", label: "Invoice Issued", description: "MSMED clock starts" },
-  { stage: "nudge", day: "Day 30", label: "Relationship Nudge", description: "Polite reminder in trade language" },
-  { stage: "tax_nudge", day: "Day 46", label: "Tax Nudge", description: "Section 43B(h) implication flagged" },
-  { stage: "formal_demand", day: "Day 75", label: "Formal Demand", description: "Compound interest notice issued" },
-  { stage: "odr_ready", day: "Day 90+", label: "ODR Pack Ready", description: "Filing pack assembled" },
+  { stage: "none",          relLabel: null,       label: "Invoice Issued",      description: "MSMED clock starts",                    offset: null },
+  { stage: "nudge",         relLabel: "Due −15",  label: "Relationship Nudge",  description: "Polite reminder in trade language",      offset: -15  },
+  { stage: "tax_nudge",     relLabel: "Due +1",   label: "Tax Nudge",           description: "Section 43B(h) implication flagged",    offset:  1   },
+  { stage: "formal_demand", relLabel: "Due +30",  label: "Formal Demand",       description: "Compound interest notice issued",        offset: 30   },
+  { stage: "odr_ready",     relLabel: "Due +45",  label: "ODR Pack Ready",      description: "Filing pack assembled",                  offset: 45   },
 ];
 
 const CHANNEL_ICONS: Record<string, React.ElementType> = {
@@ -254,6 +254,18 @@ export function InvoiceDetail({ id }: { id: number }) {
     : daysBeforeEffectiveDue <= 15 ? 1
     : 0;
 
+  // Compute per-step calendar dates for the ladder labels
+  const addDays = (base: string, n: number): string => {
+    const d = new Date(base);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().split("T")[0];
+  };
+  const effectiveDueDateStr = addDays(invoice.invoiceDate, effectiveDueDays);
+  const getStepDate = (offset: number | null): string =>
+    offset === null
+      ? formatDate(invoice.invoiceDate)
+      : formatDate(addDays(effectiveDueDateStr, offset));
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -443,7 +455,10 @@ export function InvoiceDetail({ id }: { id: number }) {
                       </div>
                       <div className={`pb-1 ${active ? "opacity-100" : done ? "opacity-90" : "opacity-50"}`}>
                         <p className={`text-xs font-medium ${done ? "text-foreground" : "text-muted-foreground"}`}>
-                          {step.day} — {step.label}
+                          {step.relLabel
+                            ? <>{step.relLabel} <span className="text-muted-foreground font-normal">· {getStepDate(step.offset)}</span> — {step.label}</>
+                            : <>{step.label} <span className="text-muted-foreground font-normal">· {getStepDate(step.offset)}</span></>
+                          }
                         </p>
                         <p className="text-xs text-muted-foreground">{step.description}</p>
                       </div>
