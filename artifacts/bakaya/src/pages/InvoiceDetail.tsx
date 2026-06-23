@@ -235,9 +235,23 @@ export function InvoiceDetail({ id }: { id: number }) {
     );
   }
 
-  const currentStepIdx = ESCALATION_STEPS.findIndex((s) => s.stage === invoice.escalationStage);
   const daysSinceInvoice = invoice.invoiceDate
     ? Math.floor((Date.now() - new Date(invoice.invoiceDate).getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+
+  // Compute visual ladder step from effective_due-anchored daysOverdue
+  // (correct for short-term invoices where agreed term < 45 days)
+  const dueDateDays = invoice.dueDate
+    ? Math.floor((new Date(invoice.dueDate).getTime() - new Date(invoice.invoiceDate).getTime()) / (1000 * 60 * 60 * 24))
+    : 45;
+  const effectiveDueDays = Math.min(dueDateDays, 45);
+  const daysBeforeEffectiveDue = effectiveDueDays - daysSinceInvoice;
+  const daysOverdueVisual = invoice.daysOverdue ?? 0;
+  const currentStepIdx =
+    daysOverdueVisual >= 45 ? 4
+    : daysOverdueVisual >= 30 ? 3
+    : daysOverdueVisual >= 1 ? 2
+    : daysBeforeEffectiveDue <= 15 ? 1
     : 0;
 
   return (

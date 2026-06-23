@@ -239,6 +239,7 @@ export interface InterestCalc {
   totalDue: number;
   isLegallyOverdue: boolean;
   section43bhApplies?: boolean;
+  eligible?: boolean;
 }
 
 export interface DashboardSummary {
